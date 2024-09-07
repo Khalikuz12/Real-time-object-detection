@@ -1,0 +1,75 @@
+import cv2
+import numpy as np
+
+def hi(x):
+    print(" ")
+
+# Initialization of the camera
+cap = cv2.VideoCapture(0)
+bars = cv2.namedWindow("bars")
+
+cv2.createTrackbar("upper_hue", "bars", 0, 180, hi)
+cv2.createTrackbar("upper_saturation", "bars", 0, 255, hi)
+cv2.createTrackbar("upper_value", "bars", 50, 255, hi)
+cv2.createTrackbar("lower_hue", "bars", 0, 180, hi)
+cv2.createTrackbar("lower_saturation", "bars", 0, 255, hi)
+cv2.createTrackbar("lower_value", "bars", 0, 255, hi)
+
+# Capturing the initial frame for creation of background
+while (True):
+    cv2.waitKey(1000)
+    ret, init_frame = cap.read()
+    # Check if the frame is returned then break
+    if (ret):
+        break
+
+# Start capturing the frames for actual mesmerizing affect!!
+while (True):
+    ret, frame = cap.read()
+    inspect = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+    # Getting the HSV values for masking the cloak
+    upper_hue = cv2.getTrackbarPos("upper_hue", "bars")
+    upper_saturation = cv2.getTrackbarPos("upper_saturation", "bars")
+    upper_value = cv2.getTrackbarPos("upper_value", "bars")
+    lower_value = cv2.getTrackbarPos("lower_value", "bars")
+    lower_hue = cv2.getTrackbarPos("lower_hue", "bars")
+    lower_saturation = cv2.getTrackbarPos("lower_saturation", "bars")
+
+    # Kernel to be used for dilation
+    kernel = np.ones((3, 3), np.uint8)
+
+    upper_hsv = np.array([upper_hue, upper_saturation, upper_value])
+    lower_hsv = np.array([lower_hue, lower_saturation, lower_value])
+
+    mask = cv2.inRange(inspect, lower_hsv, upper_hsv)
+    mask = cv2.medianBlur(mask, 3)
+    mask_inv = 255 - mask
+    mask = cv2.dilate(mask, kernel, 5)
+
+    # The mixing of frames in a combination to achieve the required frame
+    blue = frame[:, :, 0]
+    green = frame[:, :, 1]
+    red = frame[:, :, 2]
+    blue = cv2.bitwise_and(mask_inv, blue)
+    green = cv2.bitwise_and(mask_inv, green)
+    red = cv2.bitwise_and(mask_inv, red)
+    frame_inv = cv2.merge((blue, green, red))
+
+    blue = init_frame[:, :, 0]
+    green = init_frame[:, :, 1]
+    red = init_frame[:, :, 2]
+    blue = cv2.bitwise_and(blue, mask)
+    green = cv2.bitwise_and(green, mask)
+    red = cv2.bitwise_and(red, mask)
+    blanket_area = cv2.merge((blue, green, red))
+
+    final = cv2.bitwise_or(frame_inv, blanket_area)
+
+    cv2.imshow("Invisible Black", final)
+
+    if (cv2.waitKey(3) == ord('q')):
+        break;
+
+cv2.destroyAllWindows()  # To release CPU time
+cap.release()
